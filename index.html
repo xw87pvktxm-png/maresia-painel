@@ -165,6 +165,9 @@ body.compact{--radius:12px}body.compact .main{padding:14px}body.compact .card.pa
       <section class="page" id="recrutamento"></section>
       <section class="page" id="remocoes"></section>
       <section class="page" id="blacklist"></section>
+      <section class="page" id="atendimento"></section>
+      <section class="page" id="entrega_fac"></section>
+      <section class="page" id="ativacao_fac"></section>
       <section class="page" id="operacoes"></section>
       <section class="page" id="provas"></section>
       <section class="page" id="agenda"></section>
@@ -204,17 +207,26 @@ const MODULES=[
  {id:'recrutamento',icon:'🟢',name:'Recrutamento',perm:'recruit:view',group:'Movimentações'},
  {id:'remocoes',icon:'🔴',name:'Remoções',perm:'removals:view',group:'Movimentações'},
  {id:'blacklist',icon:'🔒',name:'Blacklist',perm:'blacklist:view',group:'Movimentações'},
- {id:'operacoes',icon:'🗺️',name:'Operações',perm:'operations:view',group:'Operacional'},
- {id:'provas',icon:'🧾',name:'Provas & Anexos',perm:'evidence:view',group:'Operacional'},
- {id:'agenda',icon:'📅',name:'Agenda da Org',perm:'agenda:view',group:'Operacional'},
- {id:'comunicados',icon:'📡',name:'Comunicados',perm:'comms:view',group:'Operacional'},
- {id:'regras',icon:'📝',name:'Regras da Org',perm:'rules:view',group:'Operacional'},
+ {id:'atendimento',icon:'🎧',name:'Atendimento',perm:'operations:view',group:'Operacional'},
+ {id:'entrega_fac',icon:'📦',name:'Entrega de FAC',perm:'operations:view',group:'Operacional'},
+ {id:'ativacao_fac',icon:'✅',name:'Ativação de FAC',perm:'operations:view',group:'Operacional'},
+ {id:'agenda',icon:'📅',name:'Agenda da Org',perm:'agenda:view',group:'Movimentações'},
+ {id:'comunicados',icon:'📡',name:'Comunicados',perm:'comms:view',group:'Movimentações'},
+ {id:'regras',icon:'📝',name:'Regras da Org',perm:'rules:view',group:'Movimentações'},
  {id:'relatorios',icon:'📈',name:'Análise & Relatórios',perm:'reports:view',group:'Relatórios'},
  {id:'ranking',icon:'🏆',name:'Ranking & Pontuação',perm:'ranking:view',group:'Relatórios'},
  {id:'discord',icon:'🤖',name:'Discord / Webhooks',perm:'discord:view',group:'Sistema'},
  {id:'sistema',icon:'🔐',name:'Sistema / Permissões',perm:'system:view',group:'Sistema'},
  {id:'auditoria',icon:'🕵️',name:'Log de Auditoria',perm:'audit:view',group:'Sistema'}
 ];
+const OP_PAGE_META={
+ atendimento:{id:'atendimento',icon:'🎧',title:'Atendimento',type:'Atendimento',desc:'Registre atendimentos feitos, resultado, participantes e provas.',button:'Novo atendimento'},
+ entrega_fac:{id:'entrega_fac',icon:'📦',title:'Entrega de FAC',type:'Entrega de FAC',desc:'Registre entregas de FAC com data, resultado, participantes e provas.',button:'Nova entrega de FAC'},
+ ativacao_fac:{id:'ativacao_fac',icon:'✅',title:'Ativação de FAC',type:'Ativação de FAC',desc:'Registre ativações de FAC com data, resultado, participantes e provas.',button:'Nova ativação de FAC'}
+};
+function operationPageMeta(page=activePage){return OP_PAGE_META[page]||OP_PAGE_META.atendimento}
+function operationPageForType(type=''){let t=String(type||'').toLowerCase();return Object.keys(OP_PAGE_META).find(id=>OP_PAGE_META[id].type.toLowerCase()===t)||'atendimento'}
+function operationRowsForPage(page=activePage){let meta=operationPageMeta(page);return (db.operations||[]).filter(o=>String(o.tipo||'').toLowerCase()===meta.type.toLowerCase())}
 const THEME_LIST=[
  ['default','Maresia','linear-gradient(135deg,#6d6eff,#b45cff)'],['red','Vermelho','linear-gradient(135deg,#ef4444,#fb7185)'],['green','Verde','linear-gradient(135deg,#10b981,#84cc16)'],['orange','Laranja','linear-gradient(135deg,#f97316,#facc15)'],['blue','Azul','linear-gradient(135deg,#2563eb,#38bdf8)'],['purple','Roxo','linear-gradient(135deg,#7c3aed,#d946ef)'],['gold','Dourado','linear-gradient(135deg,#d97706,#facc15)'],['pink','Rosa','linear-gradient(135deg,#db2777,#fb7185)'],['mono','Cinza','linear-gradient(135deg,#475569,#94a3b8)']
 ];
@@ -284,7 +296,7 @@ async function recoverPass(){if(typeof initCloudClient==='function'&&await initC
 function showApp(){document.getElementById('auth').style.display='none';document.getElementById('app').style.display='block';topUser.textContent=current.nick||current.user;topRole.textContent=roleLabel(current.role);userAvatar.textContent=(current.nick||current.user).slice(0,1).toUpperCase();renderAll();setPage('dashboard')}
 function logout(){log('logout','Sistema','Saiu do painel');sessionStorage.removeItem(KEY+'_session');localStorage.removeItem(KEY+'_session');location.reload()}
 function canSeeModule(m){return !!(current&&(has(m.perm)||has('all')||current.role==='admin'))}
-function navCount(m){let id=typeof m==='string'?m:m.id;if(id==='membros')return db.members.filter(x=>x.status==='ativo').length;if(id==='recrutamento')return db.candidates.filter(x=>x.status==='pendente').length;if(id==='remocoes')return db.removed.length;if(id==='blacklist')return db.blacklist.length;if(id==='provas')return evidenceRows().length;if(id==='agenda')return agendaEntries().filter(e=>e.date>=today()&&e.status!=='concluido').length;if(id==='comunicados')return db.comms.filter(isCommActive).length;if(id==='ranking')return rankingRows().filter(r=>r.total>0).length;if(id==='auditoria')return db.audit.length;if(id==='discord')return discordConfigured()?'on':'off';return ''}
+function navCount(m){let id=typeof m==='string'?m:m.id;if(OP_PAGE_META[id])return operationRowsForPage(id).length;if(id==='membros')return db.members.filter(x=>x.status==='ativo').length;if(id==='recrutamento')return db.candidates.filter(x=>x.status==='pendente').length;if(id==='remocoes')return db.removed.length;if(id==='blacklist')return db.blacklist.length;if(id==='provas')return evidenceRows().length;if(id==='agenda')return agendaEntries().filter(e=>e.date>=today()&&e.status!=='concluido').length;if(id==='comunicados')return db.comms.filter(isCommActive).length;if(id==='ranking')return rankingRows().filter(r=>r.total>0).length;if(id==='auditoria')return db.audit.length;if(id==='discord')return discordConfigured()?'on':'off';return ''}
 function navGroups(){return [...new Set(MODULES.map(m=>m.group))]}
 function isNavGroupActive(group){return MODULES.some(m=>m.group===group&&m.id===activePage)}
 function toggleNavGroup(groupKey){let group=decodeURIComponent(groupKey);navCollapsed[group]=!navCollapsed[group];localStorage.setItem(KEY+'_nav_collapsed',JSON.stringify(navCollapsed));renderNav()}
@@ -636,6 +648,13 @@ function openOrgCustomize(){ensurePremiumSchema(); modal('🏛️ Personalizar o
 function saveOrgCustomize(){ensurePremiumSchema();let rawBanner=(orgBannerInput.value||'').trim(),banner=rawBanner?safeHttpUrl(rawBanner):'';if(rawBanner&&!banner)return toast('Link inválido','A capa precisa usar uma URL HTTPS válida.');db.ui.orgName=(orgNameInput.value||'Orgs – Maresia').trim();db.ui.orgLogo=(orgLogoInput.value||'🏛').trim().slice(0,4);db.ui.orgSubtitle=(orgSubtitleInput.value||'').trim();db.ui.orgBanner=banner;db.ui.useCustomTheme=!!orgUseCustomTheme.checked;db.ui.customPrimary=orgPrimaryInput.value||'#6d6eff';db.ui.customSecondary=orgSecondaryInput.value||'#b45cff';db.ui.compact=!!orgCompactInput.checked;db.ui.sidebarCollapsed=!!orgSideInput.checked;applyUiSettings();log('personalizar_visual','Sistema','Atualizou logo, capa, tema e modo compacto');save(false);closeModal('formModal');renderAll();toast('Visual premium salvo','Logo, capa, cores e layout atualizados.')}
 renderThemes=function(){ensurePremiumSchema(); themeGrid.innerHTML=THEME_LIST.map(t=>`<div class="theme-card" onclick="setTheme('${t[0]}')"><div class="theme-dot" style="background:${t[2]}"></div><b>${t[1]}</b><p class="small muted">${!db.ui.useCustomTheme&&t[0]===(db.theme||'default')?'Ativo':'Clique para aplicar'}</p></div>`).join('')+`<div class="theme-card" onclick="openOrgCustomize()"><div class="theme-dot" style="background:linear-gradient(135deg,${esc(db.ui.customPrimary)},${esc(db.ui.customSecondary)})"></div><b>Personalizado</b><p class="small muted">${db.ui.useCustomTheme?'Ativo':'Logo + cores da org'}</p></div>`;}
 renderSystem=function(){V13.renderSystem(); sistema.insertAdjacentHTML('beforeend',`<div class="card pad premium-settings"><div class="card-head" style="margin:-16px -16px 14px"><h3>🎨 Visual premium</h3><span class="compact-badge">v13</span></div><div class="grid2"><div class="premium-switch"><div><b>Sidebar recolhível</b><p class="small muted">Mostra só ícones no PC, estilo painel pago.</p></div><input type="checkbox" ${db.ui.sidebarCollapsed?'checked':''} onchange="db.ui.sidebarCollapsed=this.checked;applyUiSettings();save(false);renderNav()"></div><div class="premium-switch"><div><b>Modo compacto</b><p class="small muted">Diminui espaços e deixa mais denso.</p></div><input type="checkbox" ${db.ui.compact?'checked':''} onchange="db.ui.compact=this.checked;applyUiSettings();save(false)"></div></div><button class="btn small" onclick="openOrgCustomize()">🏛️ Personalizar logo, capa e tema da org</button></div>`)}
+function renderOperationPage(page=activePage){let meta=operationPageMeta(page),target=document.getElementById(page)||document.getElementById(meta.id)||operacoes,rows=operationRowsForPage(meta.id);target.innerHTML=`<div class="page-head"><div><h2>${meta.icon} ${esc(meta.title)}</h2><p>${esc(meta.desc)}</p></div><button class="btn small" onclick="openOperation('${meta.id}')">➕ ${esc(meta.button)}</button></div><div class="card"><div class="table-wrap"><table class="tbl"><thead><tr><th>Data</th><th>Resultado</th><th>Participantes</th><th>Status/Provas</th><th>Observações</th><th>Ações</th></tr></thead><tbody>${rows.map(o=>`<tr><td>${fmt(o.date)}</td><td><span class="tag ${o.resultado==='Sucesso'?'green':o.resultado==='Falha'?'red':'yellow'}">${esc(o.resultado)}</span></td><td>${(o.participantes||[]).map(memberName).join(', ')||'—'}</td><td>${evidenceMini(o,'operacao',o.id)}</td><td><b>${esc(o.tipo||meta.type)}</b><p class="small muted">${esc((o.obs||o.detail||'').slice(0,90))}</p></td><td><div class="actions"><button class="btn ghost small" onclick="openCaseDetails('operacao','${o.id}')">Caso</button><button class="btn ghost small" onclick="copyCaseReport('operacao','${o.id}')">Copiar</button></div></td></tr>`).join('')||'<tr><td colspan="6"><div class="empty">Nenhum registro ainda.</div></td></tr>'}</tbody></table></div></div>`}
+renderOperations=function(page=activePage){renderOperationPage(page)}
+openOperation=function(page=activePage){if(!requirePerm('operations:edit'))return;let meta=operationPageMeta(page);modal(meta.button,`<input id="opTipo" type="hidden" value="${esc(meta.type)}"><div class="grid2"><div class="field"><label>Data</label><input id="opDate" type="date" value="${today()}"></div><div class="field"><label>Resultado</label><select id="opRes"><option>Sucesso</option><option>Parcial</option><option>Falha</option></select></div></div><div class="field"><label>Participantes</label><select id="opParts" multiple size="6">${db.members.filter(m=>m.status==='ativo').map(m=>`<option value="${m.id}">${esc(m.nick)}</option>`).join('')}</select></div><div class="field"><label>Observações / resultado</label><textarea id="opObs" placeholder="Detalhes do ${esc(meta.title.toLowerCase())}"></textarea></div>${evidenceForm({},'Resultado detalhado / observações')}`,[{t:'Salvar '+meta.title.toLowerCase(),c:'btn',fn:()=>saveOperation(meta.id)}])}
+saveOperation=function(page=activePage){let meta=operationPageMeta(page),parts=[...opParts.selectedOptions].map(o=>o.value),ev=typeof readEvidenceForm==='function'?readEvidenceForm():{},date=opDate.value||today();db.operations.unshift({id:id('o'),date,tipo:meta.type,resultado:opRes.value,participantes:parts,obs:opObs.value,by:current.user,...ev});syncOperationPresence(date);log('criar_registro',meta.title,`${meta.type} - ${opRes.value}`);closeModal('formModal');save();toast(meta.title+' registrado','Presença calculada automaticamente')}
+renderPage=function(p){({dashboard:renderDashboard,membros:renderMembers,atividade:renderActivity,recrutamento:renderRecruitment,remocoes:renderRemovals,blacklist:renderBlacklist,atendimento:()=>renderOperationPage('atendimento'),entrega_fac:()=>renderOperationPage('entrega_fac'),ativacao_fac:()=>renderOperationPage('ativacao_fac'),operacoes:()=>renderOperationPage('atendimento'),provas:renderEvidencePage,agenda:renderAgenda,comunicados:renderComms,regras:renderRules,relatorios:renderReports,ranking:renderRanking,discord:renderDiscord,sistema:renderSystem,auditoria:renderAudit}[p]||renderDashboard)()}
+const V14_SEARCH_ITEMS=searchItems;
+searchItems=function(){let items=V14_SEARCH_ITEMS();items.forEach(item=>{if(item.type==='Operação')item.go=()=>setPage(operationPageForType(item.title))});return items}
 window.addEventListener('resize',()=>applyUiSettings());
 
 

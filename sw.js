@@ -1,4 +1,4 @@
-const CACHE_NAME = 'maresia-v14-13';
+const CACHE_NAME = 'maresia-v14-15';
 const APP_SHELL = [
   './index.html',
   './manifest.webmanifest',
